@@ -1,0 +1,56 @@
+version: '3.8'
+
+networks:
+  app-network:
+    driver: bridge
+
+services:
+  ai-model-server:
+    build:
+      context: ../ai-model-server
+      dockerfile: Dockerfile
+    container_name: ai-model-server
+    ports:
+      - "8001:8001"
+    networks:
+      - app-network
+
+  policy-engine:
+    build:
+      context: ../policy-engine
+      dockerfile: Dockerfile
+    container_name: policy-engine
+    ports:
+      - "8002:8002"
+    networks:
+      - app-network
+
+  pr-scanner:
+    build:
+      context: ../pr-scanner
+      dockerfile: Dockerfile
+    container_name: pr-scanner
+    ports:
+      - "8003:8003"
+    depends_on:
+      - policy-engine
+    networks:
+      - app-network
+
+  bridge-service:
+    build:
+      context: ../bridge-service
+      dockerfile: Dockerfile
+    container_name: bridge-service
+    ports:
+      - "3000:3000"
+    environment:
+      - AI_SERVER_URL=http://ai-model-server:8001
+      - SCANNER_URL=http://pr-scanner:8003
+      - POLICY_URL=http://policy-engine:8002
+    depends_on:
+      - ai-model-server
+      - pr-scanner
+      - policy-engine
+    networks:
+      - app-network
